@@ -1,0 +1,20 @@
+.venv/
+# 🚫 CRITICAL SECURITY - NEVER COMMIT THESE
+credentials.json
+token.json
+.env
+
+# 🐍 Python Virtual Environments & Cache
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 💻 IDE & OS Files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
