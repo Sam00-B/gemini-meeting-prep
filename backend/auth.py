@@ -12,9 +12,13 @@ SCOPES = [
 # __file__ is auth.py. 
 # .resolve().parent is the /backend folder. 
 # .parent again is the root folder.
-BASE_DIR = Path(__file__).resolve().parent.parent
-CREDENTIALS_PATH = BASE_DIR / 'credentials.json'
-TOKEN_PATH = BASE_DIR / 'token.json'
+if os.environ.get("RUNNING_IN_DOCKER") == "true":
+    CREDENTIALS_PATH = Path("/app/secrets/credentials.json")
+    TOKEN_PATH = Path("/app/secrets/token.json")
+else:
+    BASE_DIR = Path(__file__).resolve().parent
+    CREDENTIALS_PATH = BASE_DIR / 'secrets' / 'credentials.json'
+    TOKEN_PATH = BASE_DIR / 'secrets' / 'token.json'
 def authenticate_google_workspace()->Credentials:
     """
     Handles OAuth2 flow for Google Workspace.

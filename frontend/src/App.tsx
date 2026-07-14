@@ -59,7 +59,6 @@ export default function App() {
       <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md transition-colors duration-200">
         <div className="mx-auto flex max-w-7xl h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
-            <span className="text-2xl"></span>
             <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Executive Briefing Console</h1>
           </div>
         {/* Flex container to hold both buttons side-by-side */}
@@ -214,7 +213,7 @@ export default function App() {
                         // FIX: Explicitly strip background, force transparent layout, and align text colors
                         strong: ({ ...props }) => (
                           <strong 
-                            className="font-bold bg-transparent bg-none text-indigo-600 dark:text-indigo-400 mt-4 block first:mt-0" 
+                            className="font-bold bg-transparent bg-none text-indigo-600 dark:text-indigo-400 " 
                             style={{ backgroundColor: 'transparent', background: 'none' }} 
                             {...props} 
                           />

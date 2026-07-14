@@ -1,0 +1,48 @@
+
+services:
+  # ----------------------------------------
+  #  FASTAPI BACKEND
+  # ----------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ai_assistant_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - FRONTEND_URL=${FRONTEND_URL}
+    volumes:
+      # 1. Persist the SQLite database
+      - ./backend_data:/app/data
+      
+      # 2.  DEVELOPMENT MOUNT: Syncs code changes instantly from host to container
+      - ./backend:/app
+      
+      # 3.  SECRETS MOUNT: Maps the whole directory so Python finds /app/secrets/credentials.json
+      - ./backend/secrets:/app/secrets
+    networks:
+      - app_network
+
+  # ----------------------------------------
+  #  REACT FRONTEND
+  # ----------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai_assistant_frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - app_network
+
+# ----------------------------------------
+# 🌐 VIRTUAL NETWORK
+# ----------------------------------------
+networks:
+  app_network:
+    driver: bridge
