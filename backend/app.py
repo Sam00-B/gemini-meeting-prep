@@ -23,10 +23,19 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="AI Executive Assistant API")
 
-FRONTEND_URL = os.getenv("FRONTEND_URL")
+# --- CORS FIX: Robust Origin Handling ---
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+# We use an array to ensure local dev and production both work flawlessly
+origins = [
+    FRONTEND_URL,
+    "http://localhost:5173",
+    "http://127.0.0.1:5173"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL],
+    allow_origins=origins,
     allow_credentials=True, # Critical for accepting cookies!
     allow_methods=["*"],
     allow_headers=["*"],
@@ -41,7 +50,7 @@ def get_db():
     finally:
         db.close()
 
-# 2. Extract User securely from HTTP-Only Cookie
+# Extract User securely from HTTP-Only Cookie
 def get_current_user(session_token: str = Cookie(None), db: Session = Depends(get_db)):
     if not session_token:
         raise HTTPException(status_code=401, detail="Missing session cookie. Please log in.")

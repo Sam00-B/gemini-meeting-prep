@@ -22,12 +22,19 @@ else:
     CREDENTIALS_PATH = BASE_DIR / 'secrets' / 'credentials.json'
     IS_PRODUCTION = False
 
+# --- DYNAMIC OAUTH ROUTING ---
+# In production, pull this from Render env vars. Locally, it defaults to localhost.
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+# This creates the exact callback URL Google needs dynamically
+REDIRECT_URI = f"{BACKEND_URL}/auth/callback"
+
 # In production, ALWAYS pull this from an environment variable!
 SECRET_KEY = os.getenv("SESSION_SECRET_KEY", "super-secret-local-key")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 # ONLY FOR LOCAL DEV: Allows OAuth over HTTP instead of HTTPS
-os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1" 
+if not IS_PRODUCTION:
+    os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1" 
 
 SCOPES = [
     'https://www.googleapis.com/auth/calendar.readonly',
@@ -54,7 +61,7 @@ def login_with_google():
     flow = Flow.from_client_secrets_file(
         str(CREDENTIALS_PATH),
         scopes=SCOPES,
-        redirect_uri='http://localhost:8000/auth/callback'
+        redirect_uri=REDIRECT_URI # 👈 Uses dynamic URI
     )
     authorization_url, state = flow.authorization_url(
         access_type='offline',
@@ -70,7 +77,7 @@ def google_auth_callback(state: str, code: str, db: Session = Depends(get_db)):
         flow = Flow.from_client_secrets_file(
             str(CREDENTIALS_PATH),
             scopes=SCOPES,
-            redirect_uri='http://localhost:8000/auth/callback',
+            redirect_uri=REDIRECT_URI, # 👈 Uses dynamic URI
             state=state
         )
         flow.fetch_token(code=code)
