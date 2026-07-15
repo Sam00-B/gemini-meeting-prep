@@ -2,7 +2,7 @@ services:
   # 1. The FastAPI Docker Backend
   - type: web
     name: assistant-backend
-    env: docker
+    runtime: docker
     dockerfilePath: backend/Dockerfile
     dockerContext: backend
     plan: free # Can be upgraded to 'starter' or 'standard' for production
@@ -26,7 +26,7 @@ services:
   # 2. The Vite React Frontend (Static CDN Site)
   - type: web
     name: assistant-frontend
-    env: static
+    runtime: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     publishPath: dist
