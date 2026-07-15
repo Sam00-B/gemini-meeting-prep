@@ -1,11 +1,21 @@
+import os
 from sqlalchemy import create_engine, Column, Integer, String, JSON, ForeignKey, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base, relationship
 
-# Define the database file path
-SQLALCHEMY_DATABASE_URL = "sqlite:////app/data/briefings.db"
+# 1. Dynamically pull the Render DB URL, fallback to your original local SQLite path
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////app/data/briefings.db")
 
-# Create the engine. The check_same_thread=False argument is required for SQLite in FastAPI
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+# 2. Fix Render's legacy Postgres prefix for modern SQLAlchemy
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+# 3. Configure the engine dynamically based on the dialect
+if DATABASE_URL.startswith("sqlite"):
+    # SQLite requires this for local FastAPI multithreading
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    # Production PostgreSQL connection
+    engine = create_engine(DATABASE_URL)
 
 # Create a Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
