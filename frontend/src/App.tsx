@@ -35,30 +35,30 @@ export default function App() {
   }, [isDarkMode]); 
 
   const generateBriefings = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      // 🚨 Added credentials: 'include' to pass the HTTP-only cookie!
-      const response = await fetch(`${API_BASE_URL}/api/briefings`, {
-        method: 'GET',
-        credentials: 'include' 
-      });
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-            throw new Error("Unauthorized: Please authenticate with Google first.");
+      setIsLoading(true);
+      setError(null);
+      try {
+        // 🚨 Added "?refresh=true" to the URL query string to bypass stale DB records
+        const response = await fetch(`${API_BASE_URL}/api/briefings?refresh=true`, {
+          method: 'GET',
+          credentials: 'include' 
+        });
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+              throw new Error("Unauthorized: Please authenticate with Google first.");
+          }
+          throw new Error(`Server responded with a ${response.status} status.`);
         }
-        throw new Error(`Server responded with a ${response.status} status.`);
+        const data: ApiResponse = await response.json();
+        setBriefings(data.briefings)
+        setHasFetched(true);
+      } catch (err: any) {
+        setError(err.message || "Failed to reach the backend service.");
+      } finally {
+        setIsLoading(false);
       }
-      const data: ApiResponse = await response.json();
-      setBriefings(data.briefings)
-      setHasFetched(true);
-    } catch (err: any) {
-      setError(err.message || "Failed to reach the backend service.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 antialiased selection:bg-indigo-100 transition-colors duration-200">

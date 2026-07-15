@@ -73,10 +73,11 @@ def get_current_user(session_token: str = Cookie(None), db: Session = Depends(ge
 
 @app.get("/api/briefings")
 def generate_meeting_briefings(
+    refresh: bool = False,  # 👈 Added parameter to force-invalidate cache
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    print(f"🚀 API Request received for user: {current_user.email}")
+    print(f"🚀 API Request received for user: {current_user.email} (Force Refresh: {refresh})")
     try:
         creds = get_user_credentials(current_user)
         meetings = get_today_meetings(creds)
@@ -91,11 +92,22 @@ def generate_meeting_briefings(
             time = meeting['start_time']
             attendees = meeting['attendees']
             
-            cached_briefing = db.query(BriefingCache).filter(
-                BriefingCache.user_id == current_user.id,
-                BriefingCache.title == title,
-                BriefingCache.time == time
-            ).first()
+            # 2. Modify cache query: If 'refresh' is True, we skip searching the DB!
+            cached_briefing = None
+            if not refresh:
+                cached_briefing = db.query(BriefingCache).filter(
+                    BriefingCache.user_id == current_user.id,
+                    BriefingCache.title == title,
+                    BriefingCache.time == time
+                ).first()
+            else:
+                # 🧹 Clean up old cache entry from DB if we are forcing a refresh
+                db.query(BriefingCache).filter(
+                    BriefingCache.user_id == current_user.id,
+                    BriefingCache.title == title,
+                    BriefingCache.time == time
+                ).delete(synchronize_session=False)
+                print(f"🧹 Cache purged for: {title}")
             
             if cached_briefing:
                 print(f"⚡ CACHE HIT: Returning saved briefing for: {title}")
