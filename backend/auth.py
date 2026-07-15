@@ -14,9 +14,15 @@ from sqlalchemy.orm import Session
 from database import User, SessionLocal
 
 # 🏗️ DYNAMIC PATHING
-if os.environ.get("RUNNING_IN_DOCKER") == "true":
+# 1. Check for Render's default Secret File mount first
+if os.path.exists("/etc/secrets/credentials.json"):
+    CREDENTIALS_PATH = Path("/etc/secrets/credentials.json")
+    IS_PRODUCTION = True
+# 2. Fallback for standard Docker environments
+elif os.environ.get("RUNNING_IN_DOCKER") == "true":
     CREDENTIALS_PATH = Path("/app/secrets/credentials.json")
     IS_PRODUCTION = True
+# 3. Local development
 else:
     BASE_DIR = Path(__file__).resolve().parent
     CREDENTIALS_PATH = BASE_DIR / 'secrets' / 'credentials.json'
