@@ -163,3 +163,6 @@ def generate_meeting_briefings(
     except Exception as e:
         print(f"❌ API Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+@app.get("/")
+def health_check():
+    return {"status": "healthy", "service": "AI Executive Assistant API"}
