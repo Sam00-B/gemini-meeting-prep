@@ -3,7 +3,7 @@ import json
 import jwt
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Response ,HTTPException,Request
 from fastapi.responses import RedirectResponse
 from google.oauth2.credentials import Credentials
 from google.oauth2 import id_token
@@ -76,24 +76,70 @@ def login_with_google():
     )
     return RedirectResponse(url=authorization_url)
 
+@auth_router.get("/login")
+def login_with_google():
+    """Generates the Google OAuth URL with PKCE and redirects the user."""
+    flow = Flow.from_client_secrets_file(
+        str(CREDENTIALS_PATH),
+        scopes=SCOPES,
+        redirect_uri=REDIRECT_URI,
+        autogenerate_code_verifier=True  # 👈 1. Force PKCE generation
+    )
+    
+    authorization_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true',
+        prompt='consent' 
+    )
+    
+    redirect = RedirectResponse(url=authorization_url)
+    
+    # 🍪 2. Stateless PKCE: Store the verifier and state in temporary, secure cookies
+    cookie_args = {
+        "httponly": True,
+        "secure": IS_PRODUCTION,
+        "samesite": "none" if IS_PRODUCTION else "lax",
+        "max_age": 600  # 10 minutes is plenty of time to complete the login
+    }
+    
+    redirect.set_cookie(key="oauth_state", value=state, **cookie_args)
+    redirect.set_cookie(key="code_verifier", value=flow.code_verifier, **cookie_args)
+    
+    return redirect
+
+
 @auth_router.get("/callback")
-def google_auth_callback(state: str, code: str, db: Session = Depends(get_db)):
-    """Handles the redirect from Google, saves tokens, and issues an HTTP-only JWT."""
+def google_auth_callback(request: Request, state: str, code: str, db: Session = Depends(get_db)):
+    """Handles the redirect from Google, verifies PKCE, and issues a JWT."""
     try:
+        # 1️⃣ Retrieve the PKCE verifier and state from our temporary cookies
+        saved_state = request.cookies.get("oauth_state")
+        code_verifier = request.cookies.get("code_verifier")
+        
+        if not saved_state or not code_verifier:
+            raise HTTPException(status_code=400, detail="OAuth session expired or missing PKCE verifier. Please try again.")
+            
+        if state != saved_state:
+            raise HTTPException(status_code=400, detail="CSRF Warning! State mismatch.")
+
+        # 2️⃣ Reconstruct the flow
         flow = Flow.from_client_secrets_file(
             str(CREDENTIALS_PATH),
             scopes=SCOPES,
-            redirect_uri=REDIRECT_URI, # 👈 Uses dynamic URI
+            redirect_uri=REDIRECT_URI,
             state=state
         )
+        
+        # 3️⃣ Inject the code verifier back into the flow for the final token exchange
+        flow.code_verifier = code_verifier
         flow.fetch_token(code=code)
+        
         credentials = flow.credentials
         
-        # Load Client ID for verification
+        # --- Database & Identity Logic ---
         with open(CREDENTIALS_PATH, 'r') as f:
             client_id = json.load(f)["web"]["client_id"]
             
-        # Verify and extract identity
         id_info = id_token.verify_oauth2_token(
             credentials.id_token, 
             GoogleRequest(), 
@@ -106,7 +152,6 @@ def google_auth_callback(state: str, code: str, db: Session = Depends(get_db)):
         if not user_email:
             raise HTTPException(status_code=400, detail="Email not provided by Google.")
             
-        # Update or create user
         user = db.query(User).filter(User.email == user_email).first()
         if not user:
             user = User(email=user_email, google_id=google_id)
@@ -117,13 +162,18 @@ def google_auth_callback(state: str, code: str, db: Session = Depends(get_db)):
         user.token_expiry = credentials.expiry
         db.commit()
         
-        # Generate the Session JWT
+        # --- JWT Generation ---
         expire = datetime.now(timezone.utc) + timedelta(days=7)
         session_data = {"sub": user.email, "exp": expire}
         session_token = jwt.encode(session_data, SECRET_KEY, algorithm="HS256")
         
-        # Bake the HTTP-Only cookie into the redirect back to React
         redirect = RedirectResponse(url=f"{FRONTEND_URL}/?login=success")
+        
+        # 🧹 4. Clean up the temporary PKCE cookies
+        redirect.delete_cookie("oauth_state")
+        redirect.delete_cookie("code_verifier")
+        
+        # 🍪 5. Set the real authentication session token
         redirect.set_cookie(
             key="session_token",
             value=session_token,
@@ -136,9 +186,7 @@ def google_auth_callback(state: str, code: str, db: Session = Depends(get_db)):
         
     except Exception as e:
         print(f"❌ OAuth Error: {e}")
-        # 🚨 TEMPORARY DEV FIX: Send the raw error to the browser
         raise HTTPException(status_code=400, detail=f"Authentication failed. Reason: {str(e)}")
-
 
 # --- UTILITIES ---
 
