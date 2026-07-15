@@ -136,7 +136,8 @@ def google_auth_callback(state: str, code: str, db: Session = Depends(get_db)):
         
     except Exception as e:
         print(f"❌ OAuth Error: {e}")
-        raise HTTPException(status_code=400, detail="Authentication failed.")
+        # 🚨 TEMPORARY DEV FIX: Send the raw error to the browser
+        raise HTTPException(status_code=400, detail=f"Authentication failed. Reason: {str(e)}")
 
 
 # --- UTILITIES ---
