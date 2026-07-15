@@ -1,15 +1,14 @@
 from googleapiclient.discovery import build
-from auth import authenticate_google_workspace
 
-def get_email_context(attendee_emails: list, days_back=14, max_results=5) -> str:
+def get_email_context(creds, attendee_emails: list, days_back=14, max_results=5) -> str:
     """
     Searches Gmail for recent conversations with the provided attendees.
     Uses an optimized Batch Request to fetch all contexts in a single network call.
+    Expects a valid google.oauth2.credentials.Credentials object.
     """
     if not attendee_emails:
         return "No external attendees to fetch context for."
 
-    creds = authenticate_google_workspace()
     service = build('gmail', 'v1', credentials=creds)
 
     # 1. Build the query
@@ -74,9 +73,4 @@ def get_email_context(attendee_emails: list, days_back=14, max_results=5) -> str
         return "Error retrieving emails."
 
 if __name__ == '__main__':
-    # Test the optimized pipeline
-    test_attendees = ['test@example.com'] # Replace with a real email
-    context = get_email_context(test_attendees)
-    
-    print("\n--- BATCH EXTRACTED CONTEXT ---")
-    print(context)
+    print("⚠️ Testing requires passing a valid credentials object now.")
