@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Markdown from 'react-markdown';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 interface Briefing {
   title: string;
@@ -38,7 +39,7 @@ export default function App() {
     setError(null);
     try {
       // 🚨 Added credentials: 'include' to pass the HTTP-only cookie!
-      const response = await fetch('http://127.0.0.1:8000/api/briefings', {
+      const response = await fetch(`${API_BASE_URL}/api/briefings`, {
         method: 'GET',
         credentials: 'include' 
       });
@@ -81,7 +82,7 @@ export default function App() {
 
           {/* 🚨 NEW: Google Auth Button */}
           <button
-            onClick={() => window.location.href = 'http://localhost:8000/auth/login'}
+            onClick={() => window.location.href = '${API_BASE_URL}/api/auth/google'}
             className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Authenticate Google Workspace

@@ -16,9 +16,11 @@ from database import User, SessionLocal
 # 🏗️ DYNAMIC PATHING
 if os.environ.get("RUNNING_IN_DOCKER") == "true":
     CREDENTIALS_PATH = Path("/app/secrets/credentials.json")
+    IS_PRODUCTION = True
 else:
     BASE_DIR = Path(__file__).resolve().parent
     CREDENTIALS_PATH = BASE_DIR / 'secrets' / 'credentials.json'
+    IS_PRODUCTION = False
 
 # In production, ALWAYS pull this from an environment variable!
 SECRET_KEY = os.getenv("SESSION_SECRET_KEY", "super-secret-local-key")
@@ -113,8 +115,8 @@ def google_auth_callback(state: str, code: str, db: Session = Depends(get_db)):
             key="session_token",
             value=session_token,
             httponly=True,  
-            secure=False,   # ⚠️ Set to True in production (Render)
-            samesite="lax", 
+            secure=IS_PRODUCTION,  
+            samesite="none" if IS_PRODUCTION else "lax", 
             max_age=7 * 24 * 60 * 60 
         )
         return redirect

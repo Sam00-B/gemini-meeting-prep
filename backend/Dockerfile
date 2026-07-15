@@ -1,27 +1,50 @@
-# 1. Base Image: Use the official lightweight Python image
-FROM python:3.12-slim
+# ================================================
+# Stage 1: Build & Dependency Installation
+# ================================================
+FROM python:3.11-slim AS builder
 
-# 2. Environment Variables: Optimize Python for containerization
-# Prevents Python from writing .pyc files to disk
+WORKDIR /build
+
+# Avoid writing .pyc files and buffering stdout/stderr
 ENV PYTHONDONTWRITEBYTECODE=1
-# Prevents Python from buffering stdout/stderr (ensures logs appear instantly)
 ENV PYTHONUNBUFFERED=1
 
-# 3. Work Directory: Set the context for all subsequent commands
+# Install system dependencies if any library needs compiling
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python requirements into a local virtual env
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir --target=/build/deps -r requirements.txt
+
+# ================================================
+# Stage 2: Minimal Runtime Environment
+# ================================================
+FROM python:3.11-slim AS runner
+
 WORKDIR /app
 
-# 4. Dependency Caching: Copy ONLY the requirements file first
-# This is a crucial caching strategy. If your code changes but your dependencies 
-# don't, Docker skips this heavy installation step on the next build.
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV RUNNING_IN_DOCKER=true
+ENV PORT=10000
 
-# 5. Application Code: Copy the rest of your FastAPI app
-COPY . .
+# Copy installed packages from builder stage
+COPY --from=builder /build/deps /usr/local/lib/python3.11/site-packages
+COPY . /app
 
-# 6. Port Exposure: Document the port the container will listen on
-EXPOSE 8000
+# Create a non-root system user for security isolation
+RUN useradd -u 10001 apiuser \
+    && mkdir -p /app/secrets \
+    && chown -R apiuser:apiuser /app
 
-# 7. Execution: The command to spin up the ASGI server
-# We bind to 0.0.0.0 so Uvicorn accepts traffic from outside the container network
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Switch to the secure non-root user
+USER apiuser
+
+# Render automatically maps its external port to the EXPOSE port
+EXPOSE 10000
+
+# Run Uvicorn using the exec form to ensure graceful termination signals (SIGTERM) are handled
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "10000"]
