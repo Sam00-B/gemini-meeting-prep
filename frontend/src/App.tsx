@@ -1,6 +1,5 @@
-import { useState,useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Markdown from 'react-markdown';
-
 
 interface Briefing {
   title: string;
@@ -20,30 +19,39 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState<boolean>(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-  return localStorage.getItem('theme') === 'dark';
-});
+    return localStorage.getItem('theme') === 'dark';
+  });
+
   useEffect(() => {
-    const root = window.document.documentElement; // This grabs the <html> tag
+    const root = window.document.documentElement; 
     if (isDarkMode) {
       root.classList.add('dark')
-      localStorage.setItem('theme', 'dark');;
+      localStorage.setItem('theme', 'dark');
     } else {
       root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');;
+      localStorage.setItem('theme', 'light');
     }
-  }, [isDarkMode]); // Re-runs this code whenever 'isDarkMode' changes
+  }, [isDarkMode]); 
 
   const generateBriefings = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/briefings');
+      // 🚨 Added credentials: 'include' to pass the HTTP-only cookie!
+      const response = await fetch('http://127.0.0.1:8000/api/briefings', {
+        method: 'GET',
+        credentials: 'include' 
+      });
+      
       if (!response.ok) {
+        if (response.status === 401) {
+            throw new Error("Unauthorized: Please authenticate with Google first.");
+        }
         throw new Error(`Server responded with a ${response.status} status.`);
       }
       const data: ApiResponse = await response.json();
       setBriefings(data.briefings)
-      setHasFetched(true);;
+      setHasFetched(true);
     } catch (err: any) {
       setError(err.message || "Failed to reach the backend service.");
     } finally {
@@ -52,7 +60,6 @@ export default function App() {
   };
 
   return (
-    
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 antialiased selection:bg-indigo-100 transition-colors duration-200">
       
       {/* Upper Navigation Bar */}
@@ -61,9 +68,9 @@ export default function App() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Executive Briefing Console</h1>
           </div>
-        {/* Flex container to hold both buttons side-by-side */}
+        
         <div className="flex items-center gap-4">
-          {/* 🌙 The Toggle Button */}
+          
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}
             className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors text-lg"
@@ -71,6 +78,15 @@ export default function App() {
           >
             {isDarkMode ? '☀️' : '🌙'}
           </button>
+
+          {/* 🚨 NEW: Google Auth Button */}
+          <button
+            onClick={() => window.location.href = 'http://localhost:8000/auth/login'}
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Authenticate Google Workspace
+          </button>
+
           <button
             onClick={generateBriefings}
             disabled={isLoading}
@@ -103,20 +119,18 @@ export default function App() {
           </div>
         )}
         
-
-        {/* Empty State Banner */}
-        {/* 1. Initial State: Show BEFORE the first click */}
+        {/* Empty State Banner BEFORE fetch */}
         {briefings.length === 0 && !isLoading && !error && !hasFetched && (
           <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-12 text-center shadow-xs transition-colors duration-200">
             <div className="rounded-full bg-slate-100 dark:bg-slate-700 p-3 text-slate-500 dark:text-slate-400 text-3xl mb-4">📅</div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Workspace is Idle</h3>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm">
-              Click "Sync & Compile Schedule" above to pull your calendar briefings.
+              Authenticate first, then click "Sync & Compile Schedule".
             </p>
           </div>
         )}
 
-        {/* 2. Empty State: Show AFTER clicking if the array is empty */}
+        {/* Empty State AFTER fetch (No meetings) */}
         {briefings.length === 0 && !isLoading && !error && hasFetched && (
           <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-12 text-center shadow-xs transition-colors duration-200">
             <div className="rounded-full bg-slate-100 dark:bg-slate-700 p-3 text-slate-500 dark:text-slate-400 text-3xl mb-4">✨</div>
@@ -126,12 +140,12 @@ export default function App() {
             </p>
           </div>
         )}
-        {/* 3. Loading State Skeleton Cards */}
+
+        {/* Loading State Skeleton Cards */}
         {isLoading && (
           <div className="space-y-8 animate-pulse">
             {[1, 2].map((i) => (
               <div key={i} className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 shadow-xs">
-                {/* Skeleton Card Header */}
                 <div className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 px-6 py-5 sm:px-8">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="h-6 w-48 rounded bg-slate-200 dark:bg-slate-700"></div>
@@ -143,8 +157,6 @@ export default function App() {
                     <div className="h-4 w-28 rounded bg-slate-200 dark:bg-slate-700"></div>
                   </div>
                 </div>
-
-                {/* Skeleton Card Content Body */}
                 <div className="px-6 py-6 sm:px-8 bg-white dark:bg-slate-800">
                   <div className="h-4 w-32 rounded bg-slate-200 dark:bg-slate-700 mb-6"></div>
                   <div className="space-y-3">
@@ -162,23 +174,20 @@ export default function App() {
         <div className="space-y-8">
           {!isLoading && briefings.map((briefing, index) => (
             <article key={index} className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 shadow-xs transition-all hover:shadow-md">
-              
-              {/* Card Meta Header */}
               <div className="border-b border-slate-100 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 px-6 py-5 sm:px-8">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{briefing.title}</h2>
                   <div className="inline-flex items-center rounded-md bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-300 ring-1 ring-inset ring-indigo-700/10 dark:ring-indigo-500/20">
                     🕒 {(() => {
-                                  try {
-                                    const date = new Date(briefing.time);
-                                    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' (' + date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ')';
-                                  } catch {
-                                    return briefing.time; // Fallback to raw string if parsing fails
-                                  }
-                                })()}
+                          try {
+                            const date = new Date(briefing.time);
+                            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' (' + date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ')';
+                          } catch {
+                            return briefing.time; 
+                          }
+                        })()}
                   </div>
                 </div>
-                
                 <div className="mt-3 flex flex-wrap items-center gap-1.5 text-sm text-slate-500">
                   <span className="font-medium text-slate-700 dark:text-slate-300">Attendees:</span>
                   {briefing.attendees.length > 0 ? (
@@ -192,14 +201,10 @@ export default function App() {
                   )}
                 </div>
               </div>
-
-              {/* AI Markdown Briefing Section */}
               <div className="px-6 py-6 sm:px-8 bg-white dark:bg-slate-800">
                 <div className="flex items-center gap-2 mb-4 border-b border-slate-100 dark:border-slate-600 pb-2">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">Intelligence Briefing</h3>
                 </div>
-                
-                {/* Embedded Intercept Layer for Markdown Parsing */}
                 <div className="text-slate-700 dark:text-slate-200 leading-relaxed max-w-none">
                   <Markdown
                       components={{
@@ -210,7 +215,6 @@ export default function App() {
                         ul: ({ ...props }) => <ul className="list-disc pl-5 mb-4 space-y-1.5 text-sm text-slate-600 dark:text-slate-300" {...props} />,
                         ol: ({ ...props }) => <ol className="list-decimal pl-5 mb-4 space-y-1.5 text-sm text-slate-600 dark:text-slate-300" {...props} />,
                         li: ({ ...props }) => <li className="text-sm leading-relaxed text-slate-600 dark:text-slate-300" {...props} />,
-                        // FIX: Explicitly strip background, force transparent layout, and align text colors
                         strong: ({ ...props }) => (
                           <strong 
                             className="font-bold bg-transparent bg-none text-indigo-600 dark:text-indigo-400 " 
