@@ -32,33 +32,44 @@ export default function App() {
       root.classList.remove('dark');
       localStorage.setItem('theme', 'light');
     }
+    generateBriefings(false, true);
   }, [isDarkMode]); 
 
-  const generateBriefings = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        // 🚨 Added "?refresh=true" to the URL query string to bypass stale DB records
-        const response = await fetch(`${API_BASE_URL}/api/briefings?refresh=true`, {
-          method: 'GET',
-          credentials: 'include' 
-        });
-        
-        if (!response.ok) {
-          if (response.status === 401) {
-              throw new Error("Unauthorized: Please authenticate with Google first.");
-          }
-          throw new Error(`Server responded with a ${response.status} status.`);
-        }
-        const data: ApiResponse = await response.json();
-        setBriefings(data.briefings)
-        setHasFetched(true);
-      } catch (err: any) {
-        setError(err.message || "Failed to reach the backend service.");
-      } finally {
-        setIsLoading(false);
+  // 🚨 Add forceRefresh and silent flags to the function
+  const generateBriefings = async (forceRefresh: boolean = false, silent: boolean = false) => {
+    setIsLoading(true);
+    if (!silent) setError(null); // Only clear/set errors if it's a manual action
+    
+    try {
+      // Dynamically append the refresh parameter based on the argument
+      const url = new URL(`${API_BASE_URL}/api/briefings`);
+      if (forceRefresh) {
+        url.searchParams.append('refresh', 'true');
       }
-    };
+
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        credentials: 'include' 
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+            throw new Error("Unauthorized: Please authenticate with Google first.");
+        }
+        throw new Error(`Server responded with a ${response.status} status.`);
+      }
+      const data: ApiResponse = await response.json();
+      setBriefings(data.briefings);
+      setHasFetched(true);
+      setError(null); // Clear any lingering errors on success
+    } catch (err: any) {
+      if (!silent) {
+        setError(err.message || "Failed to reach the backend service.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 antialiased selection:bg-indigo-100 transition-colors duration-200">
@@ -89,7 +100,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={generateBriefings}
+            onClick={() => generateBriefings(true, false)}
             disabled={isLoading}
             className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
