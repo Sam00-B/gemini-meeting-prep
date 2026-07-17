@@ -19,6 +19,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState<boolean>(false);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('theme') === 'dark';
   });
@@ -36,25 +37,30 @@ export default function App() {
   }, [isDarkMode]); 
 
   // 🚨 Add forceRefresh and silent flags to the function
+  // 🚨 Add forceRefresh and silent flags to the function
   const generateBriefings = async (forceRefresh: boolean = false, silent: boolean = false) => {
     setIsLoading(true);
     if (!silent) setError(null); // Only clear/set errors if it's a manual action
     
     try {
-      // Dynamically append the refresh parameter based on the argument
-      const url = new URL(`${API_BASE_URL}/api/briefings`);
-      if (forceRefresh) {
+      // 1. Dynamically swap the endpoint based on mode
+      const endpoint = isDemoMode ? '/api/demo-briefings' : '/api/briefings';
+      const url = new URL(`${API_BASE_URL}${endpoint}`);
+      
+      // 2. Only append the refresh parameter for the REAL endpoint
+      if (forceRefresh && !isDemoMode) {
         url.searchParams.append('refresh', 'true');
       }
 
       const response = await fetch(url.toString(), {
         method: 'GET',
-        credentials: 'include' 
+        // 3. Omit credentials (cookies) in demo mode so the browser doesn't block it
+        credentials: isDemoMode ? 'omit' : 'include' 
       });
       
       if (!response.ok) {
         if (response.status === 401) {
-            throw new Error("Unauthorized: Please authenticate with Google first.");
+            throw new Error("Unauthorized: Please authenticate with Google first, or switch to Demo Mode.");
         }
         throw new Error(`Server responded with a ${response.status} status.`);
       }
@@ -70,6 +76,7 @@ export default function App() {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 antialiased selection:bg-indigo-100 transition-colors duration-200">
@@ -91,14 +98,33 @@ export default function App() {
             {isDarkMode ? '☀️' : '🌙'}
           </button>
 
-          {/* 🚨 NEW: Google Auth Button */}
+          {/* 🚨 NEW: Demo Mode Toggle Button */}
           <button
-            onClick={() => window.location.href = `${API_BASE_URL}/auth/login`}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            onClick={() => {
+              setIsDemoMode(!isDemoMode);
+              setBriefings([]); // Clear the screen when switching modes
+              setHasFetched(false);
+            }}
+            className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
+              isDemoMode
+                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700'
+                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-700'
+            }`}
           >
-            Authenticate Google Workspace
+            {isDemoMode ? '🧪 Demo Mode: ON' : '🧪 Try Demo Mode'}
           </button>
 
+          {/* 🚨 UPDATED: Hide real Auth button if in Demo Mode */}
+          {!isDemoMode && (
+            <button
+              onClick={() => window.location.href = `${API_BASE_URL}/auth/login`}
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-all dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            >
+              Authenticate Google Workspace
+            </button>
+          )}
+
+          {/* 🚨 UPDATED: Dynamic Text on Sync Button */}
           <button
             onClick={() => generateBriefings(true, false)}
             disabled={isLoading}
@@ -113,7 +139,7 @@ export default function App() {
                 Syncing Pipelines...
               </span>
             ) : (
-              'Sync & Compile Schedule'
+              isDemoMode ? 'Load Demo Schedule' : 'Sync & Compile Schedule'
             )}
           </button>
           </div>

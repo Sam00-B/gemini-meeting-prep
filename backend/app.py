@@ -2,7 +2,7 @@ import os
 import jwt
 from dotenv import load_dotenv
 import google.genai as genai
-from fastapi import FastAPI, HTTPException, Depends, Cookie
+from fastapi import FastAPI, HTTPException, Depends, Cookie,APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -178,3 +178,23 @@ def generate_meeting_briefings(
 @app.get("/")
 def health_check():
     return {"status": "healthy", "service": "AI Executive Assistant API"}
+@app.get("/api/demo-briefings")
+def get_demo_briefings():
+    print("🧪 Demo Mode: Serving mock data")
+    return {
+        "message": "Success (Demo Mode)",
+        "briefings": [
+            {
+                "title": "Q3 Strategy Alignment (Demo)",
+                "time": "2026-07-16T10:00:00Z",
+                "attendees": ["sarah.connor@example.com", "t.stark@example.com"],
+                "ai_briefing": "**Context:** Discussing the finalized Q3 marketing budget and product roadmap.\n\n**Talking Points:**\n* Review Sarah's Q3 budget allocation document.\n* Tony's concerns about cloud infrastructure scaling.\n* Finalize go-to-market date for the new feature."
+            },
+            {
+                "title": "1:1 with Engineering Lead (Demo)",
+                "time": "2026-07-16T14:30:00Z",
+                "attendees": ["e.alderson@example.com"],
+                "ai_briefing": "**Context:** Standard weekly sync to unblock the engineering team.\n\n**Talking Points:**\n* Discuss the recent database migration latency issues.\n* Review the hiring pipeline for the Senior Backend role.\n* Confirm PTO schedule for next month."
+            }
+        ]
+    }
