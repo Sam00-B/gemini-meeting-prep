@@ -5,6 +5,16 @@ An AI-powered executive assistant that automatically prepares briefing notes for
 > This document describes the **`Render`** branch, which adds full multi-user Google OAuth, a Postgres-backed cache, and Docker/Render deployment config on top of the original single-user prototype on `main`.
 
 **Live demo:** https://assistant-frontend-q5li.onrender.com (deployed from this `Render` branch)
+## 🧪 Live Demo & Authentication Note
+
+You can interact with the live application using the **Demo Mode** button in the UI. This mode bypasses the OAuth flow and serves mocked data, allowing you to experience the frontend architecture and AI prompt formatting instantly.
+
+**Why is live Google authentication restricted?**
+Because this app requests restricted scopes (`gmail.readonly` and `calendar.readonly`), the Google Cloud project is intentionally kept in "Testing" mode. 
+* Google caps refresh token lifetimes to 7 days for testing applications.
+* Authentication is strictly limited to whitelisted developer emails to prevent unauthorized data access. 
+
+*If you are reviewing my code and wish to run the full OAuth/Gemini pipeline locally, please see the Local Setup instructions below to configure your own GCP credentials.*
 
 ### Branches at a glance
 
