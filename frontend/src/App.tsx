@@ -33,7 +33,7 @@ export default function App() {
       root.classList.remove('dark');
       localStorage.setItem('theme', 'light');
     }
-    generateBriefings(false, true);
+    
   }, [isDarkMode]); 
 
   // 🚨 Add forceRefresh and silent flags to the function
